@@ -1,0 +1,33 @@
+{
+  "name": "staffsync",
+  "version": "1.0.0",
+  "description": "StaffSync — Modern Human Resource Management System",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "start": "npm start --prefix server",
+    "bootstrap:hr": "npm run bootstrap:hr --prefix server",
+    "seed:demo": "npm run seed:demo --prefix server",
+    "test:auth": "npm run test:auth --prefix server",
+    "test:modules": "npm run test:modules --prefix server",
+    "test:all": "npm run test:auth --prefix server && npm run test:modules --prefix server",
+    "build:client": "npm run build --prefix client",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client"
+  },
+  "keywords": [
+    "hrms",
+    "human-resources",
+    "mern",
+    "mongodb",
+    "express",
+    "react",
+    "node"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
