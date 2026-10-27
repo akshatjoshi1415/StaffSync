@@ -2,7 +2,9 @@ import api from './api';
 
 /**
  * Authentication service handling API calls for authentication.
- * Uses HTTP-only cookies (withCredentials: true configured in api.js).
+ * Supports dual-mode authentication:
+ * 1. HTTP-only cookies (withCredentials: true configured in api.js)
+ * 2. Authorization Bearer header (via localStorage token backup for cross-origin third-party cookie restrictions)
  */
 const authService = {
   /**
@@ -11,6 +13,9 @@ const authService = {
    */
   async register(data) {
     const response = await api.post('/auth/register', data);
+    if (response.data && response.data.token) {
+      localStorage.setItem('staffsync_token', response.data.token);
+    }
     return response.data;
   },
 
@@ -20,6 +25,9 @@ const authService = {
    */
   async login(credentials) {
     const response = await api.post('/auth/login', credentials);
+    if (response.data && response.data.token) {
+      localStorage.setItem('staffsync_token', response.data.token);
+    }
     return response.data;
   },
 
@@ -32,11 +40,15 @@ const authService = {
   },
 
   /**
-   * Log out user and clear session cookie.
+   * Log out user and clear session cookie and local token.
    */
   async logout() {
-    const response = await api.post('/auth/logout');
-    return response.data;
+    try {
+      const response = await api.post('/auth/logout');
+      return response.data;
+    } finally {
+      localStorage.removeItem('staffsync_token');
+    }
   }
 };
 

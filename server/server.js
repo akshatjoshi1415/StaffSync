@@ -25,36 +25,55 @@ validateEnv();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// CORS configuration supporting dynamic local ports in development
+// CORS configuration supporting dynamic local ports and Vercel cloud origins
+const parseOrigins = (rawOrigins) => {
+  if (!rawOrigins) return [];
+  return rawOrigins
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+};
+
 const staticAllowedOrigins = [
-  process.env.CLIENT_URL,
+  ...parseOrigins(process.env.CLIENT_URL),
   'http://localhost:5173',
   'http://localhost:5174',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174'
-].filter(Boolean);
+];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, Postman)
-      if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, Postman, health monitors)
+    if (!origin) return callback(null, true);
 
-      // In local development, permit any localhost or 127.0.0.1 port (5173, 5174, etc.)
-      const isLocalhost =
-        process.env.NODE_ENV !== 'production' &&
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    const normalizedOrigin = origin.trim().replace(/\/+$/, '');
 
-      if (staticAllowedOrigins.includes(origin) || isLocalhost) {
-        return callback(null, true);
-      }
-      return callback(new Error('CORS policy: Not allowed by Access-Control-Allow-Origin'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-  })
-);
+    // In local development, permit any localhost or 127.0.0.1 port (5173, 5174, etc.)
+    const isLocalhost =
+      process.env.NODE_ENV !== 'production' &&
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalizedOrigin);
+
+    // Check explicit allowlist (including parsed CLIENT_URL entries)
+    if (staticAllowedOrigins.includes(normalizedOrigin) || isLocalhost) {
+      return callback(null, true);
+    }
+
+    // Automatically support Vercel preview & production domains
+    if (/^https:\/\/([a-zA-Z0-9_-]+\.)*vercel\.app$/.test(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json());
@@ -63,8 +82,8 @@ app.use(express.urlencoded({ extended: true }));
 // Cookie parsing middleware
 app.use(cookieParser());
 
-// API Health Check Endpoint
-app.get('/api/health', (req, res) => {
+// API Health Check Endpoint (accessible via /api/health and /health)
+const healthHandler = (req, res) => {
   res.status(200).json({
     success: true,
     message: 'StaffSync API is running',
@@ -72,10 +91,13 @@ app.get('/api/health', (req, res) => {
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString()
   });
-});
+};
+app.get('/api/health', healthHandler);
+app.get('/health', healthHandler);
 
 // Authentication & Authorization Routes
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes); // Backwards-compatible alias for requests omitting /api prefix
 
 // RBAC Diagnostic & Verification Routes
 app.use('/api', testRoutes);

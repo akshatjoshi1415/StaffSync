@@ -33,7 +33,8 @@ const getCookieOptions = () => {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    // Cross-site cookie between Vercel (*.vercel.app) and Render (*.onrender.com) requires sameSite='none' & secure=true
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     path: '/'
   };

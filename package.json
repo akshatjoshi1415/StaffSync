@@ -13,6 +13,7 @@
     "test:auth": "npm run test:auth --prefix server",
     "test:modules": "npm run test:modules --prefix server",
     "test:all": "npm run test:auth --prefix server && npm run test:modules --prefix server",
+    "build": "npm run build --prefix client",
     "build:client": "npm run build --prefix client",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client"
   },
